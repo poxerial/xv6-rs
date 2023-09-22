@@ -1,4 +1,4 @@
-#![allow(dead_code, unused_variables)] 
+#![allow(dead_code, unused_variables)]
 
 use core::ptr::{read_volatile, write_volatile};
 
@@ -18,12 +18,7 @@ const LCR_EIGHT_BITS: u8 = 3 << 0;
 const LCR_BAUD_LATCH: u8 = 1 << 7; // special mode to set baud rate
 const LSR: usize = 5; // line status register
 const LSR_RX_READY: usize = 1 << 0; // input is waiting to be read from RHR
-const LSR_TX_IDLE: u8= 1 << 5; // THR can accept another character to send
-
-const UART_TX_BUF_SIZE: usize = 32;
-static mut UART_TX_BUF: [u8; 32] = [0; 32];
-static mut UART_TX_W: usize = 0; // index to write
-static mut UART_TX_R: usize = 0; // index to read
+const LSR_TX_IDLE: u8 = 1 << 5; // THR can accept another character to send
 
 unsafe fn write_reg(reg: usize, val: u8) {
     let dst = (reg + UART0) as *mut u8;
@@ -36,30 +31,39 @@ unsafe fn read_reg(reg: usize) -> u8 {
 }
 
 pub unsafe fn uartinit() {
-        // disable interrupts.
-        write_reg(IER, 0x00);
+    // disable interrupts.
+    write_reg(IER, 0x00);
 
-        // special mode to set baud rate.
-        write_reg(LCR, LCR_BAUD_LATCH);
+    // special mode to set baud rate.
+    write_reg(LCR, LCR_BAUD_LATCH);
 
-        // LSB for baud rate of 38.4K.
-        write_reg(0, 0x03);
+    // LSB for baud rate of 38.4K.
+    write_reg(0, 0x03);
 
-        // MSB for baud rate of 38.4K.
-        write_reg(1, 0x00);
+    // MSB for baud rate of 38.4K.
+    write_reg(1, 0x00);
 
-        // leave set-baud mode,
-        // and set word length to 8 bits, no parity.
-        write_reg(LCR, LCR_EIGHT_BITS);
+    // leave set-baud mode,
+    // and set word length to 8 bits, no parity.
+    write_reg(LCR, LCR_EIGHT_BITS);
 
-        // reset and enable FIFOs.
-        write_reg(FCR, FCR_FIFO_ENABLE | FCR_FIFO_CLEAR);
+    // reset and enable FIFOs.
+    write_reg(FCR, FCR_FIFO_ENABLE | FCR_FIFO_CLEAR);
 
-        // enable transmit and receive interrupts.
-        write_reg(IER, IER_TX_ENABLE | IER_RX_ENABLE);
+    // enable transmit and receive interrupts.
+    write_reg(IER, IER_TX_ENABLE | IER_RX_ENABLE);
 }
 
 pub unsafe fn uartputc(c: u8) {
     while read_reg(LSR) & LSR_TX_IDLE == 0 {}
     write_reg(THR, c);
+}
+
+pub unsafe fn uartgetc() -> u8 {
+    loop {
+        if read_reg(LSR) & 0x01 != 0 {
+            // input data is ready.
+            return read_reg(RHR);
+        }
+    }
 }
