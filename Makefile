@@ -59,12 +59,6 @@ $(KERNEL_BIN): $(KERNEL_SRC) $K/kernel.ld # $U/initcode
 	$(OBJDUMP) -S $(KERNEL_BIN) > $(KERNEL_BIN_PATH)/kernel.asm
 	$(OBJDUMP) -t $(KERNEL_BIN) | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $(KERNEL_BIN_PATH)/kernel.sym
 
-$(OBJS): EXTRAFLAG := $(KCSANFLAG)
-
-$K/%.o: $K/%.c
-	$(CC) $(CFLAGS) $(EXTRAFLAG) -c -o $@ $<
-
-
 $U/initcode: $U/initcode.S
 	$(CC) $(CFLAGS) -march=rv64g -nostdinc -I. -Ikernel -c $U/initcode.S -o $U/initcode.o
 	$(LD) $(LDFLAGS) -N -e start -Ttext 0 -o $U/initcode.out $U/initcode.o
